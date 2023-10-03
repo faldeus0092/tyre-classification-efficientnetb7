@@ -32,6 +32,41 @@ The following hyperparameters were used during training:
 - optimizer: SGD with momentum = 0.9
 - num_epochs: 5
 
-### Training results
+### Example usage
+```py
+from efficientnet_pytorch import EfficientNet
+import torch
+import torchvision.transforms as transforms
 
-See at [Weights and Biases](https://wandb.ai/faldeus0092/efficientnetb7_tyrequality_classifier/runs/1z5mnxps/overview?workspace=user-faldeus0092)
+model = EfficientNet.from_name('efficientnet-b7')
+model._fc= torch.nn.Linear(in_features=model._fc.in_features, out_features=len(annotations_map), bias=True)
+model.load_state_dict(torch.load('/content/efficientnetb7_tyrequality_classifier.pth'))
+
+model.eval()
+img = Image.open('/content/defective-tires-cause-accidents-min.jpg')
+test_transform = transforms.Compose([
+    transforms.Resize(224),
+    transforms.CenterCrop(224),
+    transforms.ToTensor(),
+    transforms.Normalize([0.485, 0.456, 0.406],
+                          [0.229, 0.224, 0.225])
+])
+input_data = test_transform(img).unsqueeze(0)
+
+with torch.no_grad():
+    output = model(input_data)
+
+_, predicted_class = torch.max(output, 1)
+
+probs = torch.nn.functional.softmax(output, dim=1)
+conf, _ = torch.max(probs, 1)
+
+print('Predicted Class:', predicted_class.item())
+print('Predicted Label:', id2label[predicted_class.item()])
+print(f'Confidence: {conf.item()*100}%')
+
+plt.title(id2label[predicted_class.item()])
+plt.axis("off")
+plt.imshow(img)
+plt.show()
+```
